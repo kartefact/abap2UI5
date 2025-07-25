@@ -200,7 +200,7 @@ CLASS z2ui5_cl_app_startup IMPLEMENTATION.
 
     IF client->get( )-check_on_navigated = abap_true.
       TRY.
-          DATA(lo_f4) = CAST z2ui5_cl_pop_to_select( client->get_app( client->get( )-s_draft-id_prev_app ) ).
+          DATA(lo_f4) = CAST z2ui5_cl_pop_to_select( client->get_app_prev( ) ).
           DATA(ls_result) = lo_f4->result( ).
           IF ls_result-check_confirmed = abap_true.
 
@@ -257,6 +257,9 @@ CLASS z2ui5_cl_app_startup IMPLEMENTATION.
     simple_form2->checkbox( enabled  = abap_false
                             selected = z2ui5_cl_util=>context_check_abap_cloud( ) ).
 
+    simple_form2->label( `Userexit` ).
+    simple_form2->text( z2ui5_cl_exit=>get_user_exit_class( ) ).
+
     DATA(lv_count) = CONV string( NEW z2ui5_cl_core_srv_draft( )->count_entries( ) ).
     simple_form2->toolbar( )->title( `abap2UI5` ).
     simple_form2->label( `Version ` ).
@@ -290,7 +293,6 @@ CLASS z2ui5_cl_app_startup IMPLEMENTATION.
         client->message_box_display( `Press CTRL+F12 to open the debugging tools` ).
       WHEN `OPEN_INFO`.
         view_display_popup( ).
-*        client->nav_app_call( z2ui5_cl_core_app_info=>factory( ) ).
         RETURN.
 
       WHEN `BUTTON_CHECK`.

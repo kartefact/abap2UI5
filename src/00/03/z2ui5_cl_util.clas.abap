@@ -164,14 +164,6 @@ CLASS z2ui5_cl_util DEFINITION
       RETURNING
         VALUE(result) TYPE string.
 
-    CLASS-METHODS tab_get_where_by_dfies
-      IMPORTING
-        mv_check_tab_field TYPE string
-        ms_data_row        TYPE REF TO data
-        it_dfies           TYPE z2ui5_cl_util=>ty_t_dfies
-      RETURNING
-        VALUE(result)      TYPE string.
-
     CLASS-METHODS itab_get_itab_by_csv
       IMPORTING
         val           TYPE string
@@ -449,6 +441,12 @@ CLASS z2ui5_cl_util DEFINITION
       CHANGING
         !tab TYPE STANDARD TABLE.
 
+    CLASS-METHODS itab_get_by_struc
+      IMPORTING
+        val           TYPE any
+      RETURNING
+        VALUE(result) TYPE z2ui5_cl_util=>ty_t_name_value.
+
     CLASS-METHODS itab_filter_by_t_range
       IMPORTING
         val  TYPE ty_t_filter_multi
@@ -586,7 +584,8 @@ CLASS z2ui5_cl_util IMPLEMENTATION.
 
   METHOD conv_get_as_data_ref.
 
-    GET REFERENCE OF val INTO result.
+*    GET REFERENCE OF val INTO result.
+    result = REF #( val ).
 
   ENDMETHOD.
 
@@ -653,7 +652,7 @@ CLASS z2ui5_cl_util IMPLEMENTATION.
   METHOD filter_get_range_by_token.
 
     DATA(lv_length) = strlen( value ) - 1.
-    CASE VALUE(1).
+    CASE value(1).
 
       WHEN `=`.
         result = VALUE #( sign   = `I`
@@ -838,47 +837,6 @@ CLASS z2ui5_cl_util IMPLEMENTATION.
   ENDMETHOD.
 
 
-  METHOD tab_get_where_by_dfies.
-
-    DATA val TYPE string.
-
-    LOOP AT it_dfies REFERENCE INTO DATA(dfies).
-
-      IF NOT ( dfies->keyflag = abap_true OR dfies->fieldname = mv_check_tab_field ).
-        CONTINUE.
-      ENDIF.
-
-      ASSIGN ms_data_row->* TO FIELD-SYMBOL(<row>).
-
-      ASSIGN COMPONENT dfies->fieldname OF STRUCTURE <row> TO FIELD-SYMBOL(<value>).
-      IF <value> IS NOT ASSIGNED.
-        CONTINUE.
-      ENDIF.
-      IF <value> IS INITIAL.
-        CONTINUE.
-      ENDIF.
-
-      IF result IS NOT INITIAL.
-        DATA(and) = ` AND `.
-      ENDIF.
-
-      IF <value> CA `_`.
-        DATA(escape) = `ESCAPE '#'`.
-      ELSE.
-        CLEAR escape.
-      ENDIF.
-
-      val = <value>.
-
-      IF val CA `_`.
-        REPLACE ALL OCCURRENCES OF `_` IN val WITH `#_`.
-      ENDIF.
-
-      result = |{ result }{ and } ( { dfies->fieldname } LIKE '%{ val }%' { escape } )|.
-
-    ENDLOOP.
-
-  ENDMETHOD.
 
 
   METHOD itab_get_itab_by_csv.
@@ -1230,6 +1188,7 @@ CLASS z2ui5_cl_util IMPLEMENTATION.
 
     result = cl_abap_tstmp=>subtractsecs( tstmp = time
                                           secs  = seconds ).
+
   ENDMETHOD.
 
 
@@ -1531,6 +1490,32 @@ CLASS z2ui5_cl_util IMPLEMENTATION.
 
   ENDMETHOD.
 
+
+  METHOD itab_get_by_struc.
+
+    DATA(lt_attri) = z2ui5_cl_util=>rtti_get_t_attri_by_any( val ).
+*    result  = VALUE z2ui5_cl_util=>ty_t_name_value( ).
+    LOOP AT lt_attri REFERENCE INTO DATA(lr_attri).
+
+      ASSIGN COMPONENT lr_attri->name OF STRUCTURE val TO FIELD-SYMBOL(<component>).
+      IF sy-subrc <> 0.
+        CONTINUE.
+      ENDIF.
+
+      CASE z2ui5_cl_util=>rtti_get_type_kind( <component> ).
+
+        WHEN cl_abap_typedescr=>typekind_table.
+
+        WHEN OTHERS.
+          INSERT VALUE #(
+            n = lr_attri->name
+            v = <component>
+            ) INTO TABLE result.
+      ENDCASE.
+
+    ENDLOOP.
+
+  ENDMETHOD.
 
   METHOD itab_filter_by_t_range.
 
